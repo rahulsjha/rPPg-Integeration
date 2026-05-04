@@ -1,92 +1,183 @@
 # Near Real-Time rPPG Integration Prototype
 
-Professional prototype for incremental remote photoplethysmography (rPPG) inference on face video.
+## 1. Executive Summary
 
-Processes a 60-second video in 5-second windows and outputs:
+This project implements a near real-time remote photoplethysmography pipeline that processes a face video in 5-second chunks and outputs:
 
-- chunk-level BPM,
-- full-session BPM,
-- respiratory rate (bonus biomarker),
-- pipeline runtime and latency metrics,
-- formalized accuracy evaluation reports.
+- BPM per chunk
+- Final BPM for the full session
+- Respiratory rate (bonus biomarker)
+- Runtime and latency metrics
+- Reproducible accuracy evaluation artifacts
 
-## Project Navigation
+The current integrated backend is Open-rppg using the FacePhys model family.
 
-- Main prototype: [run_chunked_prototype.py](run_chunked_prototype.py)
-- Accuracy evaluator: [evaluate_accuracy.py](evaluate_accuracy.py)
-- Evaluation protocol: [EVALUATION.md](EVALUATION.md)
-- Overview for reviewers: [OVERVIEW.md](OVERVIEW.md)
-- Sample output: [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
-- Sample input video: [input/assignment_60s.mp4](input/assignment_60s.mp4)
+## 2. Assignment Mapping
 
-## Open-Source rPPG Starting Points Referenced
+Required by assignment:
 
-- open-rppg (Heart Rate + Respiratory Rate): https://github.com/KegangWangCCNU/open-rppg
-- rPPG-Toolbox (Heart Rate + Respiratory Rate): https://github.com/ubicomplab/rPPG-Toolbox
-- heartbeat (Heart Rate): https://github.com/prouast/heartbeat
-- Meta-rPPG (Heart Rate): https://github.com/eugenelet/Meta-rPPG
+- 60-second face video input
+- 5-second incremental processing
+- Chunk BPM + final BPM
+- Runtime/performance metrics
+- Practical deployment thinking
 
-Implementation note:
-- It is aligned with the assignment requirement to integrate a CV model into an incremental rPPG pipeline and report HR + RR + runtime behavior.
-- It can be extended to directly plug deep models from the repositories above as the signal-estimation backend.
+Implemented in this repository:
 
-Selected integrated model for this submission:
+- Chunked processing in [run_chunked_prototype.py](run_chunked_prototype.py)
+- Open-rppg model integration in [src/open_rppg_backend.py](src/open_rppg_backend.py)
+- Accuracy evaluator in [evaluate_accuracy.py](evaluate_accuracy.py)
+- Generated outputs in [notes](notes)
 
-- Open-rppg deep model backend via [src/open_rppg_backend.py](src/open_rppg_backend.py), using `rppg.Model('FacePhys.rlap')` by default.
+## 3. Open-Source Model Integration
 
-## Architecture
+Primary integrated model stack:
 
-### Computer Vision Layer
+- Open-rppg: https://github.com/KegangWangCCNU/open-rppg
+- Runtime backend: rppg.Model('FacePhys.rlap')
 
-- Face detection using OpenCV Haar cascade
-- Forehead ROI extraction for stable skin signal capture
-- Incremental frame-wise RGB trace generation
+Additional referenced starting points:
 
-### rPPG Signal Layer
+- rPPG-Toolbox: https://github.com/ubicomplab/rPPG-Toolbox
+- heartbeat: https://github.com/prouast/heartbeat
+- Meta-rPPG: https://github.com/eugenelet/Meta-rPPG
 
-- POS-style pulse projection from normalized RGB traces
-- Physiological bandpass filtering
-- Spectral peak estimation via Welch PSD
+## 4. Approach and System Design
 
-### Streaming Logic Layer
+### 4.1 High-Level Pipeline
 
-- Fixed 5-second chunking
-- Per-chunk BPM and confidence scoring
-- Robust confidence-weighted aggregation for final BPM
-- Full-session respiratory rate estimation
+1. Video is read frame-by-frame.
+2. Face is detected and forehead ROI is extracted.
+3. Frames are accumulated into fixed 5-second windows.
+4. For each window:
+- ROI tensor is passed to Open-rppg backend
+- Chunk BPM and quality/confidence are returned
+5. Final BPM is aggregated from chunk predictions using robust confidence-weighted averaging.
+6. Respiratory rate is estimated from model output, with fallback frequency-domain estimation.
+7. Runtime metrics are logged and serialized.
 
-### Observability Layer
+### 4.2 Architecture Followed
 
-- Chunk compute latency (ms)
-- Effective FPS
-- Real-time factor
-- Face coverage and prediction validity
+Computer Vision Layer:
 
-## Accuracy Measurement Standard
+- OpenCV Haar Cascade face detector
+- Forehead ROI extraction
+- Valid-face coverage tracking
 
-Accuracy is defined and reported in [EVALUATION.md](EVALUATION.md) with explicit formulas.
+Physiological Model Layer:
 
-Core reported metrics:
+- Open-rppg model backend (FacePhys.rlap default)
+- Chunk-level physiological inference
 
-- MAE, RMSE, MAPE
-- Threshold accuracy (within ±3, ±5, ±10 bpm)
-- Pearson correlation
-- Overall BPM absolute error
-- Respiratory rate absolute error (if RR reference is available)
+Temporal Aggregation Layer:
 
-If ground truth is unavailable, proxy quality metrics are reported:
+- Non-overlapping 5-second chunking
+- Confidence-aware robust aggregation for final BPM
 
-- median confidence,
-- BPM variance/IQR,
-- outlier chunk ratio.
+Metrics and Evaluation Layer:
 
-## Quick Start
+- Throughput and latency metrics
+- Ground-truth and no-ground-truth evaluation modes
 
-### 1) Generate Chunked Predictions
+## 5. Accuracy Framework
+
+### 5.1 Why Accuracy Needs Formal Definition
+
+A single BPM number is not enough for reliable model evaluation. Accuracy is defined at:
+
+- Chunk level
+- Session level
+- Runtime behavior level
+
+### 5.2 Metrics Used
+
+Given chunk prediction y_hat_i and reference y_i:
+
+MAE:
+
+$$
+MAE = \frac{1}{N}\sum_{i=1}^{N} |y\_hat_i - y_i|
+$$
+
+RMSE:
+
+$$
+RMSE = \sqrt{\frac{1}{N}\sum_{i=1}^{N}(y\_hat_i - y_i)^2}
+$$
+
+MAPE:
+
+$$
+MAPE(\%) = \frac{100}{N}\sum_{i=1}^{N}\left|\frac{y\_hat_i-y_i}{y_i}\right|
+$$
+
+Threshold accuracy:
+
+$$
+Acc_{\pm k}(\%) = \frac{100}{N}\sum_{i=1}^{N}\mathbf{1}(|y\_hat_i-y_i|\leq k)
+$$
+
+where k is 3, 5, and 10 bpm.
+
+Pearson correlation:
+
+$$
+r = corr(y\_hat, y)
+$$
+
+Overall BPM absolute error:
+
+$$
+|BPM\_{overall,pred} - BPM\_{overall,ref}|
+$$
+
+Respiratory rate absolute error:
+
+$$
+|RR\_{pred} - RR\_{ref}|
+$$
+
+### 5.3 If Ground Truth Is Not Available
+
+The evaluator reports proxy quality indicators:
+
+- Median confidence
+- Chunk BPM standard deviation
+- BPM interquartile range
+- Outlier chunk ratio
+
+This is quality analysis, not true clinical accuracy.
+
+## 6. Runtime and Deployment Metrics
+
+Reported metrics:
+
+- wall_time_sec
+- avg_chunk_compute_ms
+- p95_chunk_compute_ms
+- effective_pipeline_fps
+- realtime_factor_x
+- face_detection_coverage
+
+Real-time factor:
+
+$$
+RTF = \frac{video\ duration\ (s)}{wall\ time\ (s)}
+$$
+
+RTF greater than or equal to 1 means at-least-real-time throughput.
+
+## 7. Reproducible Commands
+
+### 7.1 Install
 
 ```bash
 python3 -m pip install open-rppg
+```
 
+### 7.2 Run Near Real-Time Chunked Inference (Open-rppg)
+
+```bash
 python3 run_chunked_prototype.py \
   --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
@@ -95,23 +186,7 @@ python3 run_chunked_prototype.py \
   --json-out notes/chunked_rppg_output.json
 ```
 
-Optional comparison against previous internal baseline:
-
-```bash
-python3 run_chunked_prototype.py \
-  --video input/assignment_60s.mp4 \
-  --chunk-sec 5 \
-  --model-backend rppg-toolbox-pos \
-  --json-out notes/chunked_rppg_output_rppg_toolbox_pos.json
-
-python3 run_chunked_prototype.py \
-  --video input/assignment_60s.mp4 \
-  --chunk-sec 5 \
-  --model-backend legacy-pos \
-  --json-out notes/chunked_rppg_output_legacy_pos.json
-```
-
-### 2) Evaluate Accuracy Without Ground Truth (Proxy)
+### 7.3 Evaluate Without Ground Truth
 
 ```bash
 python3 evaluate_accuracy.py \
@@ -119,68 +194,150 @@ python3 evaluate_accuracy.py \
   --out notes/accuracy_report.json
 ```
 
-### 3) Prepare Ground-Truth Template and Evaluate BPM Accuracy
+### 7.4 Evaluate With Ground-Truth HR and RR
 
 ```bash
 cp notes/reference_hr_template.csv notes/reference_hr.csv
-# Edit notes/reference_hr.csv with your true HR reference values
-python3 evaluate_accuracy.py \
-  --pred notes/chunked_rppg_output.json \
-  --ref-bpm-csv notes/reference_hr.csv \
-  --out notes/accuracy_report.json
-```
-
-### 4) Evaluate Accuracy With Ground Truth BPM + RR
-
-```bash
 python3 evaluate_accuracy.py \
   --pred notes/chunked_rppg_output.json \
   --ref-bpm-csv notes/reference_hr.csv \
   --ref-rr 14.8 \
-  --out notes/accuracy_report.json
+  --out notes/accuracy_report_with_gt.json
 ```
 
-## Sample Results (Current Run)
+## 8. Current Sample Output (Open-rppg Run)
 
-From [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json):
+Source: [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
 
-- Overall BPM: 103.0
-- Respiratory Rate: 15.0 breaths/min
-- Average chunk compute latency: 701.735 ms
-- P95 chunk compute latency: 887.348 ms
-- Effective pipeline FPS: 33.477
-- Real-time factor: 1.339x
+- Final BPM: 103.0
+- Respiratory rate: 15.0 brpm
+- avg_chunk_compute_ms: 701.735
+- p95_chunk_compute_ms: 887.348
+- effective_pipeline_fps: 33.477
+- realtime_factor_x: 1.339
 
-## Model Performance Notes
+Generated artifacts:
 
-- 5-second windows provide responsiveness but can create chunk-level volatility.
-- Robust weighted aggregation reduces outlier impact.
-- Signal quality degrades under motion, blur, and severe lighting changes.
-- Open-rppg backend improves model-level physiological feature extraction but costs more per-chunk latency than simple analytical baselines.
-- Respiratory rate is provided from model HRV breathing-rate output with fallback spectral estimation.
+- [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
+- [notes/chunked_rppg_output_open_rppg.json](notes/chunked_rppg_output_open_rppg.json)
+- [notes/accuracy_report.json](notes/accuracy_report.json)
+- [notes/accuracy_report_with_gt.json](notes/accuracy_report_with_gt.json)
+- [notes/PROJECT_SUMMARY.txt](notes/PROJECT_SUMMARY.txt)
 
-## Failure Cases and Practical Constraints
+## 9. Failure Cases and Practical Constraints
 
-- Fast head motion and speaking introduce non-physiological frequency energy.
-- Face detector drift can shift ROI away from stable skin regions.
-- Compressed or noisy video reduces spectral peak reliability.
-- Production deployment should include confidence gating and fallback behavior.
+- Fast motion and head pose changes reduce chunk stability.
+- Illumination flicker and compression artifacts degrade signal quality.
+- 5-second windows increase responsiveness but can increase variance.
+- Deep backend improves physiological modeling but increases per-chunk latency.
+- Production systems should include confidence gating and fallback behavior.
 
-## AI Usage Disclosure
+## 10. Code Organization
 
-AI tools were used extensively and intentionally in this project to accelerate delivery and quality:
+- Entry script: [run_chunked_prototype.py](run_chunked_prototype.py)
+- Open-rppg adapter: [src/open_rppg_backend.py](src/open_rppg_backend.py)
+- Alternate POS backend: [src/rppg_toolbox_pos.py](src/rppg_toolbox_pos.py)
+- Evaluator: [evaluate_accuracy.py](evaluate_accuracy.py)
 
-- architecture design and decomposition,
-- code generation for pipeline and evaluators,
-- signal-processing integration and metrics instrumentation,
-- documentation refinement to submission-ready standards,
-- reproducibility checks and command workflow design.
+## 11. AI Usage Disclosure
 
-## Submission Readiness Checklist
+AI tools were used extensively for:
 
-- Prototype link: [run_chunked_prototype.py](run_chunked_prototype.py)
-- Chunk BPM output: available in [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
-- Final BPM output: available in [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
-- Performance and latency notes: documented in [README.md](README.md) and [EVALUATION.md](EVALUATION.md)
-- Accuracy protocol and formulas: documented in [EVALUATION.md](EVALUATION.md)
-- Runnable command set: included above
+- architecture and decomposition of the chunked pipeline
+- model backend integration planning
+- implementation of adapters and CLI flow
+- accuracy framework and metrics definitions
+- documentation design and reproducibility workflows
+
+## 12. 10-Minute Presentation Script
+
+### Slide 1 (0:00 to 0:45) Problem and Goal
+
+Explain:
+
+- remote vitals from face video
+- assignment constraints: 5-second windows, final BPM, metrics
+- why near real-time matters in deployment scenarios
+
+### Slide 2 (0:45 to 2:00) Architecture Overview
+
+Explain:
+
+- CV layer (face detection and ROI)
+- Open-rppg model inference layer
+- chunking and aggregation layer
+- metrics and evaluation layer
+
+### Slide 3 (2:00 to 3:30) Model Integration
+
+Explain:
+
+- selected model: Open-rppg FacePhys.rlap
+- why selected: easiest robust integration with API and prebuilt model zoo
+- adapter design in src/open_rppg_backend.py
+
+### Slide 4 (3:30 to 5:00) Accuracy Definition
+
+Explain:
+
+- MAE, RMSE, MAPE, threshold metrics, Pearson
+- overall BPM error and RR error
+- ground-truth vs no-ground-truth evaluation modes
+
+### Slide 5 (5:00 to 6:30) Demo Run Commands
+
+Run live in terminal:
+
+```bash
+python3 -m pip install open-rppg
+python3 run_chunked_prototype.py --video input/assignment_60s.mp4 --chunk-sec 5 --model-backend open-rppg --open-rppg-model FacePhys.rlap --json-out notes/chunked_rppg_output.json
+python3 evaluate_accuracy.py --pred notes/chunked_rppg_output.json --out notes/accuracy_report.json
+```
+
+Show output files:
+
+- notes/chunked_rppg_output.json
+- notes/accuracy_report.json
+
+### Slide 6 (6:30 to 8:00) Results and Interpretation
+
+Explain:
+
+- final BPM and RR values
+- runtime profile and real-time factor
+- tradeoff between model complexity and chunk latency
+
+### Slide 7 (8:00 to 9:00) Failure Cases and Mitigation
+
+Explain:
+
+- motion and lighting failures
+- chunk outlier handling with robust aggregation
+- confidence gating and fallback strategy
+
+### Slide 8 (9:00 to 10:00) Summary and Next Steps
+
+Explain:
+
+- assignment requirements fully covered
+- Open-rppg backend cleanly integrated
+- reproducible commands and outputs delivered
+- next improvements: adaptive ROI tracking, overlap windows, stronger RR calibration, confidence thresholds for production
+
+## 13. One-Command Demo Sequence for Reviewers
+
+```bash
+python3 -m pip install open-rppg && \
+python3 run_chunked_prototype.py --video input/assignment_60s.mp4 --chunk-sec 5 --model-backend open-rppg --open-rppg-model FacePhys.rlap --json-out notes/chunked_rppg_output.json && \
+python3 evaluate_accuracy.py --pred notes/chunked_rppg_output.json --out notes/accuracy_report.json
+```
+
+## 14. Final Deliverables Checklist
+
+- Integrated CV + rPPG model pipeline: complete
+- 5-second incremental chunk processing: complete
+- Chunk BPM + final BPM outputs: complete
+- Runtime/performance metrics: complete
+- Respiratory rate integration: complete
+- Accuracy protocol and evaluator: complete
+- Structured documentation in single README: complete
