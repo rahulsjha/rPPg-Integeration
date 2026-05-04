@@ -120,7 +120,7 @@ These targets may be tightened for controlled datasets.
 
 ```bash
 python3 run_chunked_prototype.py \
-  --video input/assignment_60s_exact.mp4 \
+  --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
   --json-out notes/chunked_rppg_output.json
 ```

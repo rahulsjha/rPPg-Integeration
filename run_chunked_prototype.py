@@ -9,6 +9,9 @@ import cv2
 import numpy as np
 from scipy import signal
 
+from src.open_rppg_backend import OpenRPPGBackend
+from src.rppg_toolbox_pos import pos_wang
+
 
 @dataclass
 class ChunkResult:
@@ -103,11 +106,20 @@ class FaceRPPGChunkProcessor:
         chunk_sec: float = 5.0,
         min_face_area_ratio: float = 0.01,
         detect_every_n: int = 5,
+        model_backend: str = "rppg-toolbox-pos",
+        roi_size: int = 36,
+        open_rppg_model_name: str = "FacePhys.rlap",
     ) -> None:
         self.video_path = video_path
         self.chunk_sec = chunk_sec
         self.min_face_area_ratio = min_face_area_ratio
         self.detect_every_n = detect_every_n
+        self.model_backend = model_backend
+        self.roi_size = roi_size
+        self.open_rppg_model_name = open_rppg_model_name
+        self.open_rppg_backend = None
+        if self.model_backend == "open-rppg":
+            self.open_rppg_backend = OpenRPPGBackend(model_name=self.open_rppg_model_name)
 
         self.face_detector = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -151,9 +163,12 @@ class FaceRPPGChunkProcessor:
         chunk_size = max(1, int(round(self.chunk_sec * fps)))
 
         chunk_rgb: List[np.ndarray] = []
-        chunk_face_ok = 0
+        chunk_rois: List[np.ndarray] = []
         chunk_results: List[ChunkResult] = []
         all_bvp_parts: List[np.ndarray] = []
+        all_valid_rois: List[np.ndarray] = []
+        rr_estimates: List[float] = []
+        rr_weights: List[float] = []
 
         frame_idx = 0
         detect_counter = 0
@@ -181,14 +196,23 @@ class FaceRPPGChunkProcessor:
                 rx, ry, rw, rh = self._forehead_roi(face_box, w, h)
                 roi = frame[ry : ry + rh, rx : rx + rw, :]
                 if roi.size > 0:
-                    rgb_mean = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB).reshape(-1, 3).mean(axis=0)
+                    roi_rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+                    rgb_mean = roi_rgb.reshape(-1, 3).mean(axis=0)
+                    roi_small = cv2.resize(
+                        roi_rgb,
+                        (self.roi_size, self.roi_size),
+                        interpolation=cv2.INTER_AREA,
+                    )
                     chunk_rgb.append(rgb_mean)
-                    chunk_face_ok += 1
+                    chunk_rois.append(roi_small)
+                    all_valid_rois.append(roi_small)
                     used_face_frames += 1
                 else:
                     chunk_rgb.append(np.array([np.nan, np.nan, np.nan], dtype=np.float64))
+                    chunk_rois.append(np.zeros((self.roi_size, self.roi_size, 3), dtype=np.uint8))
             else:
                 chunk_rgb.append(np.array([np.nan, np.nan, np.nan], dtype=np.float64))
+                chunk_rois.append(np.zeros((self.roi_size, self.roi_size, 3), dtype=np.uint8))
 
             frame_idx += 1
 
@@ -205,12 +229,32 @@ class FaceRPPGChunkProcessor:
                 confidence = 0.0
 
                 if np.sum(valid) >= int(0.7 * chunk_size):
-                    valid_trace = chunk_arr[valid]
-                    bvp = extract_bvp_pos(valid_trace)
-                    bvp = bandpass_filter(bvp, fps, 0.7, 3.5)
-                    bpm, confidence = estimate_rate_from_psd(bvp, fps, 0.7, 3.5, to_per_minute=True)
-                    if bpm is not None:
-                        all_bvp_parts.append(bvp)
+                    if self.model_backend == "open-rppg":
+                        roi_arr = np.array(chunk_rois, dtype=np.uint8)
+                        valid_rois = roi_arr[valid]
+                        model_out = self.open_rppg_backend.estimate_chunk(valid_rois, fps=fps)
+                        bpm = model_out["bpm"]
+                        sqi = model_out["sqi"]
+                        confidence = float(max(1e-3, (sqi if sqi is not None else 0.0) * 20.0))
+                        rr_chunk = model_out["respiratory_rate_brpm"]
+                        if rr_chunk is not None:
+                            rr_estimates.append(float(rr_chunk))
+                            rr_weights.append(confidence)
+                    elif self.model_backend == "rppg-toolbox-pos":
+                        roi_arr = np.array(chunk_rois, dtype=np.uint8)
+                        valid_rois = roi_arr[valid]
+                        bvp = pos_wang(valid_rois, fs=fps)
+                        bvp = bandpass_filter(bvp, fps, 0.7, 3.5)
+                        bpm, confidence = estimate_rate_from_psd(bvp, fps, 0.7, 3.5, to_per_minute=True)
+                        if bpm is not None:
+                            all_bvp_parts.append(bvp)
+                    else:
+                        valid_trace = chunk_arr[valid]
+                        bvp = extract_bvp_pos(valid_trace)
+                        bvp = bandpass_filter(bvp, fps, 0.7, 3.5)
+                        bpm, confidence = estimate_rate_from_psd(bvp, fps, 0.7, 3.5, to_per_minute=True)
+                        if bpm is not None:
+                            all_bvp_parts.append(bvp)
 
                 proc_ms = (time.perf_counter() - c_start) * 1000.0
                 chunk_results.append(
@@ -226,7 +270,7 @@ class FaceRPPGChunkProcessor:
                 )
 
                 chunk_rgb = []
-                chunk_face_ok = 0
+                chunk_rois = []
 
         cap.release()
         elapsed = time.perf_counter() - t0
@@ -237,8 +281,17 @@ class FaceRPPGChunkProcessor:
 
         overall_rr = None
         rr_conf = 0.0
-        if all_bvp_parts:
+        if rr_estimates:
+            overall_rr = robust_weighted_average(rr_estimates, rr_weights)
+            rr_conf = float(np.mean(rr_weights)) if rr_weights else 0.0
+        elif all_bvp_parts:
             full_bvp = np.concatenate(all_bvp_parts)
+            rr_signal = bandpass_filter(full_bvp, fps, 0.1, 0.5)
+            rr, rr_conf = estimate_rate_from_psd(rr_signal, fps, 0.1, 0.5, to_per_minute=True)
+            overall_rr = rr
+        elif all_valid_rois:
+            full_roi_arr = np.array(all_valid_rois, dtype=np.uint8)
+            full_bvp = pos_wang(full_roi_arr, fs=fps)
             rr_signal = bandpass_filter(full_bvp, fps, 0.1, 0.5)
             rr, rr_conf = estimate_rate_from_psd(rr_signal, fps, 0.1, 0.5, to_per_minute=True)
             overall_rr = rr
@@ -246,6 +299,8 @@ class FaceRPPGChunkProcessor:
         chunk_times = [c.process_time_ms for c in chunk_results]
         output = {
             "video": str(self.video_path),
+            "model_backend": self.model_backend,
+            "open_rppg_model": self.open_rppg_model_name if self.model_backend == "open-rppg" else None,
             "fps": round(fps, 3),
             "total_frames": frame_idx,
             "duration_sec": round(duration_sec if duration_sec > 0 else frame_idx / fps, 3),
@@ -280,13 +335,30 @@ def main() -> None:
         default="notes/chunked_rppg_output.json",
         help="Where to write JSON output",
     )
+    parser.add_argument(
+        "--model-backend",
+        default="open-rppg",
+        choices=["open-rppg", "rppg-toolbox-pos", "legacy-pos"],
+        help="rPPG model backend for chunk processing",
+    )
+    parser.add_argument(
+        "--open-rppg-model",
+        default="FacePhys.rlap",
+        help="Open-rppg model name, e.g. FacePhys.rlap, PhysNet.pure, TSCAN.rlap",
+    )
     args = parser.parse_args()
 
     video_path = Path(args.video)
     if not video_path.exists():
         raise FileNotFoundError(f"Input video does not exist: {video_path}")
 
-    result = FaceRPPGChunkProcessor(video_path=video_path, chunk_sec=args.chunk_sec).run()
+    backend = args.model_backend if args.model_backend != "legacy-pos" else "legacy-pos"
+    result = FaceRPPGChunkProcessor(
+        video_path=video_path,
+        chunk_sec=args.chunk_sec,
+        model_backend=backend,
+        open_rppg_model_name=args.open_rppg_model,
+    ).run()
 
     out_path = Path(args.json_out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

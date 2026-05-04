@@ -17,7 +17,24 @@ Processes a 60-second video in 5-second windows and outputs:
 - Evaluation protocol: [EVALUATION.md](EVALUATION.md)
 - Overview for reviewers: [OVERVIEW.md](OVERVIEW.md)
 - Sample output: [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
-- Sample input video: [input/assignment_60s_exact.mp4](input/assignment_60s_exact.mp4)
+- Sample input video: [input/assignment_60s.mp4](input/assignment_60s.mp4)
+
+## Open-Source rPPG Starting Points Referenced
+
+- open-rppg (Heart Rate + Respiratory Rate): https://github.com/KegangWangCCNU/open-rppg
+- rPPG-Toolbox (Heart Rate + Respiratory Rate): https://github.com/ubicomplab/rPPG-Toolbox
+- heartbeat (Heart Rate): https://github.com/prouast/heartbeat
+- Meta-rPPG (Heart Rate): https://github.com/eugenelet/Meta-rPPG
+
+Implementation note:
+
+- This repository now integrates the POS_WANG method pattern from rPPG-Toolbox as the primary model backend for near real-time chunked inference.
+- It is aligned with the assignment requirement to integrate a CV model into an incremental rPPG pipeline and report HR + RR + runtime behavior.
+- It can be extended to directly plug deep models from the repositories above as the signal-estimation backend.
+
+Selected integrated model for this submission:
+
+- rPPG-Toolbox unsupervised POS_WANG backend (integrated in [src/rppg_toolbox_pos.py](src/rppg_toolbox_pos.py) and used by [run_chunked_prototype.py](run_chunked_prototype.py)).
 
 ## Architecture
 
@@ -71,9 +88,20 @@ If ground truth is unavailable, proxy quality metrics are reported:
 
 ```bash
 python3 run_chunked_prototype.py \
-  --video input/assignment_60s_exact.mp4 \
+  --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
+  --model-backend rppg-toolbox-pos \
   --json-out notes/chunked_rppg_output.json
+```
+
+Optional comparison against previous internal baseline:
+
+```bash
+python3 run_chunked_prototype.py \
+  --video input/assignment_60s.mp4 \
+  --chunk-sec 5 \
+  --model-backend legacy-pos \
+  --json-out notes/chunked_rppg_output_legacy.json
 ```
 
 ### 2) Evaluate Accuracy Without Ground Truth (Proxy)
@@ -109,12 +137,12 @@ python3 evaluate_accuracy.py \
 
 From [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json):
 
-- Overall BPM: 78.4
+- Overall BPM: 88.9
 - Respiratory Rate: 15.0 breaths/min
-- Average chunk compute latency: 4.919 ms
-- P95 chunk compute latency: 8.832 ms
-- Effective pipeline FPS: 23.189
-- Real-time factor: 0.928x
+- Average chunk compute latency: 9.712 ms
+- P95 chunk compute latency: 12.827 ms
+- Effective pipeline FPS: 42.584
+- Real-time factor: 1.703x
 
 ## Model Performance Notes
 
