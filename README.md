@@ -27,14 +27,12 @@ Processes a 60-second video in 5-second windows and outputs:
 - Meta-rPPG (Heart Rate): https://github.com/eugenelet/Meta-rPPG
 
 Implementation note:
-
-- This repository now integrates the POS_WANG method pattern from rPPG-Toolbox as the primary model backend for near real-time chunked inference.
 - It is aligned with the assignment requirement to integrate a CV model into an incremental rPPG pipeline and report HR + RR + runtime behavior.
 - It can be extended to directly plug deep models from the repositories above as the signal-estimation backend.
 
 Selected integrated model for this submission:
 
-- rPPG-Toolbox unsupervised POS_WANG backend (integrated in [src/rppg_toolbox_pos.py](src/rppg_toolbox_pos.py) and used by [run_chunked_prototype.py](run_chunked_prototype.py)).
+- Open-rppg deep model backend via [src/open_rppg_backend.py](src/open_rppg_backend.py), using `rppg.Model('FacePhys.rlap')` by default.
 
 ## Architecture
 
@@ -87,10 +85,13 @@ If ground truth is unavailable, proxy quality metrics are reported:
 ### 1) Generate Chunked Predictions
 
 ```bash
+python3 -m pip install open-rppg
+
 python3 run_chunked_prototype.py \
   --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
-  --model-backend rppg-toolbox-pos \
+  --model-backend open-rppg \
+  --open-rppg-model FacePhys.rlap \
   --json-out notes/chunked_rppg_output.json
 ```
 
@@ -100,8 +101,14 @@ Optional comparison against previous internal baseline:
 python3 run_chunked_prototype.py \
   --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
+  --model-backend rppg-toolbox-pos \
+  --json-out notes/chunked_rppg_output_rppg_toolbox_pos.json
+
+python3 run_chunked_prototype.py \
+  --video input/assignment_60s.mp4 \
+  --chunk-sec 5 \
   --model-backend legacy-pos \
-  --json-out notes/chunked_rppg_output_legacy.json
+  --json-out notes/chunked_rppg_output_legacy_pos.json
 ```
 
 ### 2) Evaluate Accuracy Without Ground Truth (Proxy)
@@ -137,19 +144,20 @@ python3 evaluate_accuracy.py \
 
 From [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json):
 
-- Overall BPM: 88.9
+- Overall BPM: 103.0
 - Respiratory Rate: 15.0 breaths/min
-- Average chunk compute latency: 9.712 ms
-- P95 chunk compute latency: 12.827 ms
-- Effective pipeline FPS: 42.584
-- Real-time factor: 1.703x
+- Average chunk compute latency: 701.735 ms
+- P95 chunk compute latency: 887.348 ms
+- Effective pipeline FPS: 33.477
+- Real-time factor: 1.339x
 
 ## Model Performance Notes
 
 - 5-second windows provide responsiveness but can create chunk-level volatility.
 - Robust weighted aggregation reduces outlier impact.
 - Signal quality degrades under motion, blur, and severe lighting changes.
-- Respiratory rate estimation is useful but lower-confidence than heart-rate estimation in RGB-only setups.
+- Open-rppg backend improves model-level physiological feature extraction but costs more per-chunk latency than simple analytical baselines.
+- Respiratory rate is provided from model HRV breathing-rate output with fallback spectral estimation.
 
 ## Failure Cases and Practical Constraints
 

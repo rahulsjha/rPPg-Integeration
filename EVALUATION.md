@@ -119,9 +119,13 @@ These targets may be tightened for controlled datasets.
 ### 6.1 Generate Prediction Output
 
 ```bash
+python3 -m pip install open-rppg
+
 python3 run_chunked_prototype.py \
   --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
+  --model-backend open-rppg \
+  --open-rppg-model FacePhys.rlap \
   --json-out notes/chunked_rppg_output.json
 ```
 

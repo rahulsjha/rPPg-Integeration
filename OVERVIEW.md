@@ -23,9 +23,13 @@
 ### Generate Prediction
 
 ```bash
+python3 -m pip install open-rppg
+
 python3 run_chunked_prototype.py \
   --video input/assignment_60s.mp4 \
   --chunk-sec 5 \
+  --model-backend open-rppg \
+  --open-rppg-model FacePhys.rlap \
   --json-out notes/chunked_rppg_output.json
 ```
 
@@ -51,11 +55,11 @@ python3 evaluate_accuracy.py \
 
 ## Current Sample Results
 
-- Overall BPM: 78.4
+- Overall BPM: 103.0
 - Respiratory Rate: 15.0 breaths/min
-- Avg chunk latency: 4.919 ms
-- P95 chunk latency: 8.832 ms
-- Real-time factor: 0.928x
+- Avg chunk latency: 701.735 ms
+- P95 chunk latency: 887.348 ms
+- Real-time factor: 1.339x
 
 ## Accuracy Measurement Definition
 
