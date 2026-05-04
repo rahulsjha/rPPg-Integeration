@@ -1,0 +1,133 @@
+{
+  "video": "input/assignment_60s_exact.mp4",
+  "fps": 25.0,
+  "total_frames": 1500,
+  "duration_sec": 60.0,
+  "chunk_sec": 5.0,
+  "chunk_size_frames": 125,
+  "chunk_results": [
+    {
+      "chunk_index": 0,
+      "start_sec": 0.0,
+      "end_sec": 5.0,
+      "bpm": 135.0,
+      "confidence": 7.902,
+      "face_coverage": 1.0,
+      "process_time_ms": 8.127
+    },
+    {
+      "chunk_index": 1,
+      "start_sec": 5.0,
+      "end_sec": 10.0,
+      "bpm": 60.0,
+      "confidence": 26.337,
+      "face_coverage": 1.0,
+      "process_time_ms": 2.045
+    },
+    {
+      "chunk_index": 2,
+      "start_sec": 10.0,
+      "end_sec": 15.0,
+      "bpm": 90.0,
+      "confidence": 4.509,
+      "face_coverage": 1.0,
+      "process_time_ms": 1.988
+    },
+    {
+      "chunk_index": 3,
+      "start_sec": 15.0,
+      "end_sec": 20.0,
+      "bpm": 105.0,
+      "confidence": 4.799,
+      "face_coverage": 1.0,
+      "process_time_ms": 9.091
+    },
+    {
+      "chunk_index": 4,
+      "start_sec": 20.0,
+      "end_sec": 25.0,
+      "bpm": 105.0,
+      "confidence": 2.674,
+      "face_coverage": 1.0,
+      "process_time_ms": 6.519
+    },
+    {
+      "chunk_index": 5,
+      "start_sec": 25.0,
+      "end_sec": 30.0,
+      "bpm": 105.0,
+      "confidence": 6.383,
+      "face_coverage": 1.0,
+      "process_time_ms": 4.389
+    },
+    {
+      "chunk_index": 6,
+      "start_sec": 30.0,
+      "end_sec": 35.0,
+      "bpm": 60.0,
+      "confidence": 9.525,
+      "face_coverage": 1.0,
+      "process_time_ms": 2.921
+    },
+    {
+      "chunk_index": 7,
+      "start_sec": 35.0,
+      "end_sec": 40.0,
+      "bpm": 75.0,
+      "confidence": 7.294,
+      "face_coverage": 1.0,
+      "process_time_ms": 1.242
+    },
+    {
+      "chunk_index": 8,
+      "start_sec": 40.0,
+      "end_sec": 45.0,
+      "bpm": 75.0,
+      "confidence": 13.523,
+      "face_coverage": 1.0,
+      "process_time_ms": 1.072
+    },
+    {
+      "chunk_index": 9,
+      "start_sec": 45.0,
+      "end_sec": 50.0,
+      "bpm": 60.0,
+      "confidence": 16.472,
+      "face_coverage": 1.0,
+      "process_time_ms": 8.62
+    },
+    {
+      "chunk_index": 10,
+      "start_sec": 50.0,
+      "end_sec": 55.0,
+      "bpm": 60.0,
+      "confidence": 2.454,
+      "face_coverage": 1.0,
+      "process_time_ms": 6.715
+    },
+    {
+      "chunk_index": 11,
+      "start_sec": 55.0,
+      "end_sec": 60.0,
+      "bpm": 165.0,
+      "confidence": 2.436,
+      "face_coverage": 1.0,
+      "process_time_ms": 6.297
+    }
+  ],
+  "overall": {
+    "bpm": 78.4,
+    "respiratory_rate_brpm": 15.0,
+    "rr_confidence": 1.223,
+    "valid_chunk_count": 12,
+    "total_chunk_count": 12
+  },
+  "metrics": {
+    "wall_time_sec": 64.687,
+    "avg_chunk_compute_ms": 4.919,
+    "p95_chunk_compute_ms": 8.832,
+    "effective_pipeline_fps": 23.189,
+    "realtime_factor_x": 0.928,
+    "face_detection_coverage": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "mode": "no_ground_truth",
+  "proxy_quality": {
+    "valid_chunk_count": 12,
+    "median_confidence": 6.8385,
+    "bpm_std": 32.0887,
+    "bpm_iqr": 45.0,
+    "outlier_chunk_ratio": 0.0833,
+    "note": "Proxy quality metrics only (no reference ground truth provided)"
+  },
+  "overall_prediction": {
+    "bpm": 78.4,
+    "respiratory_rate_brpm": 15.0,
+    "rr_confidence": 1.223,
+    "valid_chunk_count": 12,
+    "total_chunk_count": 12
+  },
+  "pipeline_metrics": {
+    "wall_time_sec": 64.687,
+    "avg_chunk_compute_ms": 4.919,
+    "p95_chunk_compute_ms": 8.832,
+    "effective_pipeline_fps": 23.189,
+    "realtime_factor_x": 0.928,
+    "face_detection_coverage": 1.0
+  }
+}
