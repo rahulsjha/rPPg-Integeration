@@ -1,0 +1,1 @@
+python3 run_chunked_prototype.py --video input/assignment_60s.mp4 --chunk-sec 5 --model-backend rppg-toolbox-pos --json-out notes/chunked_rppg_output_toolbox.json

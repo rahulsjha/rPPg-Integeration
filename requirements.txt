@@ -1,0 +1,12 @@
+# Core dependencies for the near real-time chunked rPPG prototype
+numpy>=1.24
+scipy>=1.10
+opencv-python>=4.8
+open-rppg
+
+# Optional legacy GUI / Basler camera stack for run_application.py
+# Uncomment only if you need the older desktop workflow.
+# scikit-image>=0.22
+# PyQt5>=5.15
+# pyqtgraph>=0.13
+# pypylon

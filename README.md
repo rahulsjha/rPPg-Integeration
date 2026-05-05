@@ -148,6 +148,8 @@ The evaluator reports proxy quality indicators:
 
 This is quality analysis, not true clinical accuracy.
 
+
+
 ### 5.4 Ground Truth Size Note
 
 The bundled `notes/reference_hr_template.csv` and `notes/reference_hr.csv` are small workflow-validation samples.
@@ -175,15 +177,67 @@ $$
 
 RTF greater than or equal to 1 means at-least-real-time throughput.
 
-## 7. Reproducible Commands
+## 7. Requirements and Setup
 
-### 7.1 Install
+The main chunked prototype uses a small Python runtime stack.
+
+Core dependencies in [requirements.txt](requirements.txt):
+
+- `numpy` for array math and aggregation
+- `scipy` for filtering and PSD-based rate estimation
+- `opencv-python` for video decoding and face/ROI preprocessing
+- `open-rppg` for the integrated physiological model backend
+
+Recommended environment:
+
+- Python 3.10 or newer
+- macOS, Linux, or Windows with a working camera/video codec stack
+
+Optional legacy UI/camera dependencies for [run_application.py](run_application.py):
+
+- `pypylon`
+- `PyQt5`
+- `pyqtgraph`
+- `scikit-image`
+
+These optional packages are not included in `requirements.txt` because they are specific to the older Basler/desktop GUI workflow and are not needed for the near real-time chunked prototype.
+
+### 7.1 Install Dependencies
 
 ```bash
-python3 -m pip install open-rppg
+python3 -m pip install -r requirements.txt
 ```
 
-### 7.2 Run Near Real-Time Chunked Inference (Open-rppg)
+### 7.2 Quick Environment Test
+
+Run the import check first:
+
+```bash
+python3 - <<'PY'
+import cv2
+import numpy as np
+from scipy import signal
+import rppg
+print("dependency check: ok")
+PY
+```
+
+Then run the prototype and evaluator:
+
+```bash
+python3 run_chunked_prototype.py --video input/assignment_60s.mp4 --chunk-sec 5 --model-backend open-rppg --open-rppg-model FacePhys.rlap --json-out notes/chunked_rppg_output.json
+python3 evaluate_accuracy.py --pred notes/chunked_rppg_output.json --out notes/accuracy_report.json
+```
+
+## 8. Reproducible Commands
+
+### 8.1 Install
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+### 8.2 Run Near Real-Time Chunked Inference (Open-rppg)
 
 ```bash
 python3 run_chunked_prototype.py \
@@ -194,7 +248,7 @@ python3 run_chunked_prototype.py \
   --json-out notes/chunked_rppg_output.json
 ```
 
-### 7.3 Evaluate Without Ground Truth
+### 8.3 Evaluate Without Ground Truth
 
 ```bash
 python3 evaluate_accuracy.py \
@@ -202,7 +256,7 @@ python3 evaluate_accuracy.py \
   --out notes/accuracy_report.json
 ```
 
-### 7.4 Evaluate With Ground-Truth HR and RR
+### 8.4 Evaluate With Ground-Truth HR and RR
 
 ```bash
 cp notes/reference_hr_template.csv notes/reference_hr.csv
@@ -213,16 +267,16 @@ python3 evaluate_accuracy.py \
   --out notes/accuracy_report_with_gt.json
 ```
 
-## 8. Current Sample Output (Open-rppg Run)
+## 9. Current Sample Output (Open-rppg Run)
 
 Source: [notes/chunked_rppg_output.json](notes/chunked_rppg_output.json)
 
-- Final BPM: 103.0
+- Final BPM: 94.21
 - Respiratory rate: 15.0 brpm
-- avg_chunk_compute_ms: 701.735
-- p95_chunk_compute_ms: 887.348
-- effective_pipeline_fps: 33.477
-- realtime_factor_x: 1.339
+- avg_chunk_compute_ms: 628.443
+- p95_chunk_compute_ms: 717.332
+- effective_pipeline_fps: 34.052
+- realtime_factor_x: 1.362
 
 Generated artifacts:
 
@@ -230,9 +284,8 @@ Generated artifacts:
 - [notes/chunked_rppg_output_open_rppg.json](notes/chunked_rppg_output_open_rppg.json)
 - [notes/accuracy_report.json](notes/accuracy_report.json)
 - [notes/accuracy_report_with_gt.json](notes/accuracy_report_with_gt.json)
-- [notes/PROJECT_SUMMARY.txt](notes/PROJECT_SUMMARY.txt)
 
-## 9. Failure Cases and Practical Constraints
+## 10. Failure Cases and Practical Constraints
 
 - Fast motion and head pose changes reduce chunk stability.
 - Illumination flicker and compression artifacts degrade signal quality.
@@ -240,14 +293,14 @@ Generated artifacts:
 - Deep backend improves physiological modeling but increases per-chunk latency.
 - Production systems should include confidence gating and fallback behavior.
 
-## 10. Code Organization
+## 11. Code Organization
 
 - Entry script: [run_chunked_prototype.py](run_chunked_prototype.py)
 - Open-rppg adapter: [src/open_rppg_backend.py](src/open_rppg_backend.py)
 - Alternate POS backend: [src/rppg_toolbox_pos.py](src/rppg_toolbox_pos.py)
 - Evaluator: [evaluate_accuracy.py](evaluate_accuracy.py)
 
-## 11. AI Usage Disclosure
+## 12. AI Usage Disclosure
 
 AI tools were used extensively for:
 
@@ -263,81 +316,9 @@ Specific AI-assisted examples in this repository:
 - Drafting the Open-rppg adapter in [src/open_rppg_backend.py](src/open_rppg_backend.py)
 - Creating the confidence-aware aggregation and evaluation warnings in [evaluate_accuracy.py](evaluate_accuracy.py)
 - Restructuring [README.md](README.md) into a single submission-ready document with runnable commands and presentation notes
+- Tuning the chunk outlier rejection logic to down-weight low-confidence BPM windows before final aggregation
+- Generating the Open-rppg sample outputs and evaluation reports to validate the end-to-end workflow
 
-## 12. 10-Minute Presentation Script
-
-### Slide 1 (0:00 to 0:45) Problem and Goal
-
-Explain:
-
-- remote vitals from face video
-- assignment constraints: 5-second windows, final BPM, metrics
-- why near real-time matters in deployment scenarios
-
-### Slide 2 (0:45 to 2:00) Architecture Overview
-
-Explain:
-
-- CV layer (face detection and ROI)
-- Open-rppg model inference layer
-- chunking and aggregation layer
-- metrics and evaluation layer
-
-### Slide 3 (2:00 to 3:30) Model Integration
-
-Explain:
-
-- selected model: Open-rppg FacePhys.rlap
-- why selected: easiest robust integration with API and prebuilt model zoo
-- adapter design in src/open_rppg_backend.py
-
-### Slide 4 (3:30 to 5:00) Accuracy Definition
-
-Explain:
-
-- MAE, RMSE, MAPE, threshold metrics, Pearson
-- overall BPM error and RR error
-- ground-truth vs no-ground-truth evaluation modes
-
-### Slide 5 (5:00 to 6:30) Demo Run Commands
-
-Run live in terminal:
-
-```bash
-python3 -m pip install open-rppg
-python3 run_chunked_prototype.py --video input/assignment_60s.mp4 --chunk-sec 5 --model-backend open-rppg --open-rppg-model FacePhys.rlap --json-out notes/chunked_rppg_output.json
-python3 evaluate_accuracy.py --pred notes/chunked_rppg_output.json --out notes/accuracy_report.json
-```
-
-Show output files:
-
-- notes/chunked_rppg_output.json
-- notes/accuracy_report.json
-
-### Slide 6 (6:30 to 8:00) Results and Interpretation
-
-Explain:
-
-- final BPM and RR values
-- runtime profile and real-time factor
-- tradeoff between model complexity and chunk latency
-
-### Slide 7 (8:00 to 9:00) Failure Cases and Mitigation
-
-Explain:
-
-- motion and lighting failures
-- chunk outlier handling with robust aggregation
-- confidence gating and fallback strategy
-
-### Slide 8 (9:00 to 10:00) Summary and Next Steps
-
-Explain:
-
-- assignment requirements fully covered
-- Open-rppg backend cleanly integrated
-- reproducible commands and outputs delivered
-- next improvements: adaptive ROI tracking, overlap windows, stronger RR calibration, confidence thresholds for production
 
 ## 13. One-Command Demo Sequence for Reviewers
 
