@@ -175,6 +175,14 @@ def evaluate(prediction: Dict, ref_times: np.ndarray, ref_bpms: np.ndarray) -> D
 
     metrics = compute_error_metrics(pred, ref)
 
+    sample_count = int(len(ref))
+    small_sample_warning = None
+    if sample_count < 10:
+        small_sample_warning = (
+            f"Reference set contains only {sample_count} chunk-aligned samples; "
+            "treat accuracy values as a workflow validation signal, not a stable benchmark."
+        )
+
     overall_pred = prediction.get("overall", {}).get("bpm")
     overall_ref = float(np.mean(ref)) if len(ref) else None
     overall_abs_error = abs(float(overall_pred) - overall_ref) if overall_pred is not None and overall_ref is not None else None
@@ -182,6 +190,7 @@ def evaluate(prediction: Dict, ref_times: np.ndarray, ref_bpms: np.ndarray) -> D
     return {
         "mode": "with_ground_truth",
         "chunk_accuracy": metrics,
+        "warnings": [small_sample_warning] if small_sample_warning else [],
         "overall": {
             "pred_overall_bpm": overall_pred,
             "ref_overall_bpm": round(overall_ref, 4) if overall_ref is not None else None,
@@ -262,6 +271,8 @@ def main() -> None:
     if report["mode"] == "with_ground_truth":
         m = report["chunk_accuracy"]
         o = report["overall"]
+        for warning in report.get("warnings", []):
+            print(f"WARNING: {warning}")
         print(f"Chunk MAE (bpm): {m['mae_bpm']}")
         print(f"Chunk RMSE (bpm): {m['rmse_bpm']}")
         print(f"Chunk MAPE (%): {m['mape_percent']}")

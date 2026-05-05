@@ -148,6 +148,14 @@ The evaluator reports proxy quality indicators:
 
 This is quality analysis, not true clinical accuracy.
 
+### 5.4 Ground Truth Size Note
+
+The bundled `notes/reference_hr_template.csv` and `notes/reference_hr.csv` are small workflow-validation samples.
+
+- They are useful to verify the command path and report generation.
+- They are not sufficient to make strong claims about model accuracy.
+- For a trustworthy benchmark, replace them with a larger manually annotated dataset.
+
 ## 6. Runtime and Deployment Metrics
 
 Reported metrics:
@@ -248,6 +256,13 @@ AI tools were used extensively for:
 - implementation of adapters and CLI flow
 - accuracy framework and metrics definitions
 - documentation design and reproducibility workflows
+
+Specific AI-assisted examples in this repository:
+
+- Designing the chunked pipeline structure and CLI interface in [run_chunked_prototype.py](run_chunked_prototype.py)
+- Drafting the Open-rppg adapter in [src/open_rppg_backend.py](src/open_rppg_backend.py)
+- Creating the confidence-aware aggregation and evaluation warnings in [evaluate_accuracy.py](evaluate_accuracy.py)
+- Restructuring [README.md](README.md) into a single submission-ready document with runnable commands and presentation notes
 
 ## 12. 10-Minute Presentation Script
 

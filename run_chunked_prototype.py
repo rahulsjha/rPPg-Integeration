@@ -80,23 +80,43 @@ def estimate_rate_from_psd(
 def robust_weighted_average(values: List[float], weights: List[float]) -> Optional[float]:
     if not values:
         return None
+
     arr = np.array(values, dtype=np.float64)
     w = np.array(weights, dtype=np.float64)
-    if np.all(w <= 0):
-        return float(np.mean(arr))
 
-    # Trim outliers using MAD before weighted average.
-    med = np.median(arr)
-    mad = np.median(np.abs(arr - med)) + 1e-8
-    keep = np.abs(arr - med) <= 2.5 * 1.4826 * mad
-    arr = arr[keep]
-    w = w[keep]
+    if len(arr) == 1:
+        return float(arr[0])
+
+    # Confidence-aware outlier rejection:
+    # 1) remove the lowest-confidence quarter when enough chunks exist
+    # 2) remove BPM values far from the robust center using MAD
+    if len(arr) >= 4:
+        confidence_floor = np.percentile(w, 25)
+        keep_conf = w >= confidence_floor
+    else:
+        keep_conf = np.ones_like(w, dtype=bool)
+
+    arr = arr[keep_conf]
+    w = w[keep_conf]
+
+    if len(arr) == 0:
+        return None
+
+    median = np.median(arr)
+    mad = np.median(np.abs(arr - median)) + 1e-8
+    keep_mad = np.abs(arr - median) <= 1.75 * 1.4826 * mad
+
+    arr = arr[keep_mad]
+    w = w[keep_mad]
+
     if len(arr) == 0:
         return None
 
     if np.sum(w) <= 0:
-        return float(np.mean(arr))
-    return float(np.sum(arr * w) / np.sum(w))
+        return float(np.median(arr))
+
+    weighted = float(np.sum(arr * w) / np.sum(w))
+    return weighted
 
 
 class FaceRPPGChunkProcessor:
