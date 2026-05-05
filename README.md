@@ -38,6 +38,9 @@
 
 This project implements a near real-time remote photoplethysmography (rPPG) system that processes face video in 5-second windows and outputs per-chunk BPM, a final session BPM, respiratory rate, and runtime performance metrics.
 
+
+<video controls src="input/assignment_60s.mp4" title="Title"></video>
+
 **Integrated model stack:** [Open-rppg](https://github.com/KegangWangCCNU/open-rppg) · `rppg.Model('FacePhys.rlap')`
 
 ---
@@ -77,8 +80,6 @@ Video Input (60s)
 ---
 
 ## Architecture
-
-[text](demo/demo.webm)
 ![alt text](architure.png)
 ### Computer Vision Layer
 - OpenCV Haar Cascade face detector
