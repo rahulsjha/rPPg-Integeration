@@ -15,7 +15,7 @@
       "bpm": 135.0,
       "confidence": 4.489,
       "face_coverage": 1.0,
-      "process_time_ms": 11.581
+      "process_time_ms": 13.341
     },
     {
       "chunk_index": 1,
@@ -24,7 +24,7 @@
       "bpm": 60.0,
       "confidence": 5.196,
       "face_coverage": 1.0,
-      "process_time_ms": 9.207
+      "process_time_ms": 9.025
     },
     {
       "chunk_index": 2,
@@ -33,7 +33,7 @@
       "bpm": 90.0,
       "confidence": 6.492,
       "face_coverage": 1.0,
-      "process_time_ms": 8.895
+      "process_time_ms": 9.229
     },
     {
       "chunk_index": 3,
@@ -42,7 +42,7 @@
       "bpm": 60.0,
       "confidence": 2.112,
       "face_coverage": 1.0,
-      "process_time_ms": 9.035
+      "process_time_ms": 9.341
     },
     {
       "chunk_index": 4,
@@ -51,7 +51,7 @@
       "bpm": 150.0,
       "confidence": 3.111,
       "face_coverage": 1.0,
-      "process_time_ms": 8.779
+      "process_time_ms": 8.877
     },
     {
       "chunk_index": 5,
@@ -60,7 +60,7 @@
       "bpm": 105.0,
       "confidence": 8.008,
       "face_coverage": 1.0,
-      "process_time_ms": 8.92
+      "process_time_ms": 8.828
     },
     {
       "chunk_index": 6,
@@ -69,7 +69,7 @@
       "bpm": 60.0,
       "confidence": 9.039,
       "face_coverage": 1.0,
-      "process_time_ms": 8.785
+      "process_time_ms": 8.813
     },
     {
       "chunk_index": 7,
@@ -78,7 +78,7 @@
       "bpm": 75.0,
       "confidence": 4.131,
       "face_coverage": 1.0,
-      "process_time_ms": 8.965
+      "process_time_ms": 9.497
     },
     {
       "chunk_index": 8,
@@ -87,7 +87,7 @@
       "bpm": 75.0,
       "confidence": 7.435,
       "face_coverage": 1.0,
-      "process_time_ms": 9.28
+      "process_time_ms": 9.065
     },
     {
       "chunk_index": 9,
@@ -96,7 +96,7 @@
       "bpm": 60.0,
       "confidence": 12.872,
       "face_coverage": 1.0,
-      "process_time_ms": 8.749
+      "process_time_ms": 63.204
     },
     {
       "chunk_index": 10,
@@ -105,7 +105,7 @@
       "bpm": 150.0,
       "confidence": 4.451,
       "face_coverage": 1.0,
-      "process_time_ms": 8.947
+      "process_time_ms": 25.967
     },
     {
       "chunk_index": 11,
@@ -114,7 +114,7 @@
       "bpm": 150.0,
       "confidence": 3.277,
       "face_coverage": 1.0,
-      "process_time_ms": 8.813
+      "process_time_ms": 11.065
     }
   ],
   "overall": {
@@ -125,11 +125,11 @@
     "total_chunk_count": 12
   },
   "metrics": {
-    "wall_time_sec": 31.424,
-    "avg_chunk_compute_ms": 9.163,
-    "p95_chunk_compute_ms": 10.315,
-    "effective_pipeline_fps": 47.798,
-    "realtime_factor_x": 1.912,
+    "wall_time_sec": 35.223,
+    "avg_chunk_compute_ms": 15.521,
+    "p95_chunk_compute_ms": 42.724,
+    "effective_pipeline_fps": 42.643,
+    "realtime_factor_x": 1.706,
     "face_detection_coverage": 1.0
   }
 }
